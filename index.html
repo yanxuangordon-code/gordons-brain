@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gordon's Smart Brain</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .chat-container {
+      background: white;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .chat-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .header-center { text-align: center; flex: 1; }
+    .header-title { font-size: 22px; font-weight: bold; }
+    .header-subtitle { font-size: 12px; opacity: 0.9; margin-top: 2px; }
+
+    .mode-selector { display: flex; align-items: center; gap: 8px; }
+    .mode-label { font-weight: 700; font-size: 11px; white-space: nowrap; }
+
+    .mode-toggle { position: relative; display: inline-block; width: 130px; height: 32px; }
+    .mode-toggle input { opacity: 0; width: 0; height: 0; }
+    .mode-slider {
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255,255,255,0.25); transition: 0.3s; border-radius: 20px;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.15);
+    }
+    .mode-slider:before {
+      position: absolute; content: ""; height: 26px; width: 62px;
+      left: 3px; bottom: 3px; background: white;
+      transition: 0.3s; border-radius: 17px; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+    input:checked + .mode-slider:before { transform: translateX(62px); }
+    .mode-text {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      font-size: 11px; font-weight: 800; pointer-events: none; color: #333;
+    }
+    .mode-text.left { left: 8px; }
+    .mode-text.right { right: 8px; }
+
+    .feature-buttons {
+      display: flex; gap: 4px; padding: 6px 12px;
+      background: #f8f9fa; border-bottom: 1px solid #e0e0e0;
+      overflow-x: auto; flex-wrap: wrap; justify-content: center;
+    }
+    .feature-btn {
+      padding: 4px 10px; background: white; border: 1.5px solid #667eea;
+      color: #667eea; border-radius: 12px; font-size: 10px; cursor: pointer;
+      transition: all 0.2s; white-space: nowrap; font-weight: 600;
+    }
+    .feature-btn:hover {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white; border-color: transparent;
+      transform: translateY(-1px); box-shadow: 0 3px 8px rgba(102,126,234,0.4);
+    }
+
+    .chat-messages {
+      flex: 1; overflow-y: auto; padding: 24px;
+      background: linear-gradient(180deg, #f8f9fa 0%, #fff 100%);
+    }
+    .chat-messages::-webkit-scrollbar { width: 6px; }
+    .chat-messages::-webkit-scrollbar-thumb { background: #667eea; border-radius: 10px; }
+
+    .message { margin-bottom: 18px; display: flex; animation: slideIn 0.3s ease; }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    .message.user { justify-content: flex-end; }
+
+    .message-content {
+      max-width: 78%; padding: 12px 16px; border-radius: 18px;
+      word-wrap: break-word; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      line-height: 1.6; font-size: 14px;
+    }
+    .message.user .message-content {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+    }
+    .message.assistant .message-content {
+      background: white; color: #333; border: 1px solid #e8e8e8;
+    }
+    .message-content strong { color: #667eea; font-weight: 700; }
+    .message.user .message-content strong { color: #fff; }
+    .message-content em { color: #764ba2; font-style: italic; }
+    .message-content h1, .message-content h2, .message-content h3 { color: #667eea; margin: 8px 0 4px; font-size: 15px; }
+    .message-content ul, .message-content ol { padding-left: 18px; margin: 5px 0; }
+    .message-content li { margin: 3px 0; }
+    .message-content a { color: #667eea; }
+    .highlight {
+      background: linear-gradient(120deg, #ffd93d, #ffed4e);
+      padding: 1px 4px; border-radius: 3px; font-weight: 600; color: #333;
+    }
+    .message-image { max-width: 100%; border-radius: 10px; margin-top: 8px; }
+
+    .code-block {
+      background: #1e1e2e; color: #cdd6f4; padding: 14px;
+      border-radius: 8px; overflow-x: auto; margin: 8px 0;
+      font-family: 'Courier New', monospace; font-size: 13px; position: relative;
+    }
+    .copy-code-btn {
+      position: absolute; top: 8px; right: 8px; background: #667eea; color: white;
+      border: none; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 10px;
+    }
+    .copy-code-btn:hover { background: #764ba2; }
+
+    .typing-indicator {
+      display: flex; gap: 6px; padding: 12px 16px; align-items: center;
+    }
+    .typing-indicator span {
+      width: 7px; height: 7px;
+      background: #b0b0b0;
+      border-radius: 50%;
+      animation: claudeDot 1.4s infinite ease-in-out;
+    }
+    .typing-indicator span:nth-child(1) { animation-delay: 0s; }
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes claudeDot {
+      0%, 60%, 100% { transform: translateY(0); background: #c0c0c0; }
+      30% { transform: translateY(-6px); background: #667eea; }
+    }
+
+    .chat-input-container {
+      padding: 16px 20px; background: white; border-top: 1px solid #e0e0e0;
+      display: flex; gap: 10px; align-items: center;
+      box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
+    }
+    .chat-input {
+      flex: 1; padding: 12px 18px; border: 2px solid #e0e0e0;
+      border-radius: 28px; font-size: 14px; outline: none;
+      transition: all 0.3s; font-family: inherit;
+    }
+    .chat-input:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.1); }
+    .send-button {
+      padding: 12px 26px; background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white; border: none; border-radius: 28px; font-size: 14px;
+      cursor: pointer; font-weight: bold; transition: all 0.25s;
+      box-shadow: 0 4px 12px rgba(102,126,234,0.4);
+    }
+    .send-button:hover:not(:disabled) { transform: translateY(-2px) scale(1.04); box-shadow: 0 6px 18px rgba(102,126,234,0.5); }
+    .send-button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+    .image-upload-button {
+      padding: 12px 18px; background: white; color: #667eea;
+      border: 2px solid #667eea; border-radius: 28px; font-size: 13px;
+      cursor: pointer; font-weight: bold; transition: all 0.25s;
+    }
+    .image-upload-button:hover {
+      background: linear-gradient(135deg, #667eea, #764ba2); color: white;
+      border-color: transparent; transform: translateY(-2px);
+    }
+    .clear-chat-btn {
+      padding: 10px 14px; background: #ff4d4d; color: white; border: none;
+      border-radius: 20px; cursor: pointer; font-size: 11px; font-weight: bold;
+      transition: all 0.2s; white-space: nowrap;
+    }
+    .clear-chat-btn:hover { background: #e03e3e; transform: translateY(-1px); }
+
+    .image-preview { max-width: 180px; max-height: 180px; border-radius: 10px; margin-top: 8px; }
+    .remove-image {
+      background: #ff4444; color: white; border: none; padding: 4px 10px;
+      border-radius: 12px; font-size: 11px; cursor: pointer; margin-top: 4px;
+    }
+    #imagePreviewContainer { padding: 0 20px; background: white; }
+
+    .modal {
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;
+    }
+    .modal-content {
+      background: white; padding: 28px; border-radius: 16px;
+      max-width: 480px; width: 90%; text-align: center;
+    }
+    .modal-content h3 { margin-bottom: 14px; color: #667eea; font-size: 18px; }
+    .modal-content textarea {
+      width: 100%; padding: 10px; border: 2px solid #e0e0e0;
+      border-radius: 10px; margin: 10px 0; font-family: inherit; resize: vertical;
+    }
+    .modal-content input[type=text] {
+      width: 100%; padding: 10px; border: 2px solid #e0e0e0;
+      border-radius: 10px; margin: 8px 0; font-family: inherit;
+    }
+    .modal-buttons { display: flex; gap: 10px; justify-content: center; margin-top: 14px; }
+    .modal-btn { padding: 10px 22px; border: none; border-radius: 20px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+    .modal-btn.primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+    .modal-btn.secondary { background: #e0e0e0; color: #333; }
+    .modal-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+
+    .secure-badge {
+      background: rgba(255,255,255,0.15); border-radius: 20px;
+      padding: 3px 10px; font-size: 10px; font-weight: 700;
+      display: inline-block; margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+<div class="chat-container">
+
+  <div class="chat-header">
+    <div class="mode-selector">
+      <span class="mode-label">Mode:</span>
+      <label class="mode-toggle">
+        <input type="checkbox" id="modeToggle" checked>
+        <span class="mode-slider">
+          <span class="mode-text left">🧠 Think</span>
+          <span class="mode-text right">⚡ Quick</span>
+        </span>
+      </label>
+    </div>
+    <div class="header-center">
+      <div class="header-title">🧠 Gordon's Smart Brain ✨</div>
+      <div class="header-subtitle">🚀 Your Unlimited AI Assistant! <span class="secure-badge">🔒 Secured</span></div>
+    </div>
+    <div style="width:138px;"></div>
+  </div>
+
+  <div class="feature-buttons">
+    <button class="feature-btn" id="summarizeBtn">📄 Summarize</button>
+    <button class="feature-btn" id="translateBtn">🌐 Translate</button>
+    <button class="feature-btn" id="codeBtn">💻 Code</button>
+    <button class="feature-btn" id="creativeBtn">✨ Creative</button>
+    <button class="feature-btn" id="mathBtn">🔢 Math</button>
+    <button class="feature-btn" id="explainBtn">🎓 Explain</button>
+    <button class="feature-btn" id="analyzeBtn">📊 Analyze</button>
+    <button class="feature-btn" id="diagramBtn">📈 Diagram</button>
+  </div>
+
+  <div class="chat-messages" id="chatMessages">
+    <div class="message assistant">
+      <div class="message-content">
+        🎉 Welcome to <strong>Gordon's Smart Brain</strong><br><br>
+        <strong>🔒 API key is now secured on the backend!</strong><br>
+        No one can steal your key by viewing page source.<br><br>
+        <strong>💫 What I Can Do:</strong><br>
+        📄 Summarize • 🌐 Translate • 💻 Code Help • ✨ Creative Writing<br>
+        🔢 Math • 📊 Data Analysis • 🎓 Teaching • 📈 Diagrams<br><br>
+        🎯 <strong>Completely Free & Super Fast!</strong> Just type and start chatting! 🎨
+      </div>
+    </div>
+  </div>
+
+  <div class="chat-input-container">
+    <input type="file" id="imageInput" accept="image/*" style="display:none;">
+    <button class="image-upload-button" id="imageButton">📷 Image</button>
+    <input type="text" class="chat-input" id="chatInput" placeholder="💬 Ask me anything! 🌟" autocomplete="off">
+    <button class="send-button" id="sendButton">🚀 Send</button>
+    <button class="clear-chat-btn" id="clearChatBtn">🗑️ Clear</button>
+  </div>
+  <div id="imagePreviewContainer"></div>
+</div>
+
+<!-- MODALS -->
+<div class="modal" id="summarizeModal">
+  <div class="modal-content">
+    <h3>📄 Summarize Text</h3>
+    <textarea id="summarizeText" rows="6" placeholder="Paste your text here..."></textarea>
+    <div class="modal-buttons">
+      <button class="modal-btn primary" id="summarizeSubmit">Summarize</button>
+      <button class="modal-btn secondary" id="summarizeCancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="translateModal">
+  <div class="modal-content">
+    <h3>🌐 Translate Text</h3>
+    <textarea id="translateText" rows="4" placeholder="Enter text to translate..."></textarea>
+    <input type="text" id="translateLang" placeholder="Target language (e.g. Spanish, French, Japanese)">
+    <div class="modal-buttons">
+      <button class="modal-btn primary" id="translateSubmit">Translate</button>
+      <button class="modal-btn secondary" id="translateCancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="mathModal">
+  <div class="modal-content">
+    <h3>🔢 Math Solver</h3>
+    <textarea id="mathText" rows="4" placeholder="Enter your math problem..."></textarea>
+    <div class="modal-buttons">
+      <button class="modal-btn primary" id="mathSubmit">Solve</button>
+      <button class="modal-btn secondary" id="mathCancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ─── NO API KEY HERE! Calls local proxy server instead ───────────────────────
+  const PROXY_URL = 'https://gordons-brain.onrender.com/api/chat';
+
+  const MODELS = [
+    'llama-3.3-70b-versatile',
+    'llama-3.1-8b-instant',
+    'mixtral-8x7b-32768',
+    'gemma2-9b-it'
+  ];
+
+  const chatMessages = document.getElementById('chatMessages');
+  const chatInput    = document.getElementById('chatInput');
+  const sendButton   = document.getElementById('sendButton');
+  const imageButton  = document.getElementById('imageButton');
+  const imageInput   = document.getElementById('imageInput');
+  const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+  const clearChatBtn = document.getElementById('clearChatBtn');
+  const modeToggle   = document.getElementById('modeToggle');
+
+  let conversationHistory = [];
+  let currentImage = null;
+  let isThinkingMode = false;
+  let lastRequestTime = 0;
+  let currentModelIndex = 0;
+
+  modeToggle.addEventListener('change', e => {
+    isThinkingMode = !e.target.checked;
+    addMessage(`Switched to ${isThinkingMode ? '🧠 Thinking Mode' : '⚡ Quick Mode'}!`, false);
+  });
+
+  clearChatBtn.addEventListener('click', () => {
+    if (!confirm('🗑️ Clear all chat history?')) return;
+    conversationHistory = [];
+    chatMessages.innerHTML = `
+      <div class="message assistant">
+        <div class="message-content">✨ Fresh start! Chat cleared. Ready for new adventures? 🚀</div>
+      </div>`;
+  });
+
+  imageButton.addEventListener('click', () => imageInput.click());
+  imageInput.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      currentImage = { data: ev.target.result.split(',')[1], mimeType: file.type, dataUrl: ev.target.result };
+      imagePreviewContainer.innerHTML = `
+        <div style="padding:10px 20px;">
+          <img src="${ev.target.result}" class="image-preview">
+          <br><button class="remove-image" id="removeImageBtn">✕ Remove</button>
+        </div>`;
+      document.getElementById('removeImageBtn').addEventListener('click', () => {
+        currentImage = null;
+        imagePreviewContainer.innerHTML = '';
+        imageInput.value = '';
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+
+  document.getElementById('summarizeBtn').addEventListener('click', () => { document.getElementById('summarizeModal').style.display = 'flex'; });
+  document.getElementById('translateBtn').addEventListener('click', () => { document.getElementById('translateModal').style.display = 'flex'; });
+  document.getElementById('mathBtn').addEventListener('click', () => { document.getElementById('mathModal').style.display = 'flex'; });
+  document.getElementById('codeBtn').addEventListener('click', () => { chatInput.value = 'Write code to '; chatInput.focus(); });
+  document.getElementById('creativeBtn').addEventListener('click', () => { chatInput.value = 'Write a creative story about '; chatInput.focus(); });
+  document.getElementById('explainBtn').addEventListener('click', () => { chatInput.value = "Explain like I'm 5: "; chatInput.focus(); });
+  document.getElementById('analyzeBtn').addEventListener('click', () => { chatInput.value = 'Analyze and provide insights on: '; chatInput.focus(); });
+  document.getElementById('diagramBtn').addEventListener('click', () => { chatInput.value = 'Create a diagram showing: '; chatInput.focus(); });
+
+  document.getElementById('summarizeCancel').addEventListener('click', () => { document.getElementById('summarizeModal').style.display = 'none'; });
+  document.getElementById('translateCancel').addEventListener('click', () => { document.getElementById('translateModal').style.display = 'none'; });
+  document.getElementById('mathCancel').addEventListener('click', () => { document.getElementById('mathModal').style.display = 'none'; });
+
+  document.getElementById('summarizeSubmit').addEventListener('click', () => {
+    const text = document.getElementById('summarizeText').value;
+    if (text) { chatInput.value = `Please summarize this text: ${text}`; document.getElementById('summarizeModal').style.display = 'none'; document.getElementById('summarizeText').value = ''; sendMessage(); }
+  });
+  document.getElementById('translateSubmit').addEventListener('click', () => {
+    const text = document.getElementById('translateText').value;
+    const lang = document.getElementById('translateLang').value;
+    if (text && lang) { chatInput.value = `Translate this to ${lang}: ${text}`; document.getElementById('translateModal').style.display = 'none'; document.getElementById('translateText').value = ''; document.getElementById('translateLang').value = ''; sendMessage(); }
+  });
+  document.getElementById('mathSubmit').addEventListener('click', () => {
+    const text = document.getElementById('mathText').value;
+    if (text) { chatInput.value = `Solve this math problem step by step: ${text}`; document.getElementById('mathModal').style.display = 'none'; document.getElementById('mathText').value = ''; sendMessage(); }
+  });
+
+  window.addEventListener('click', e => { if (e.target.classList.contains('modal')) e.target.style.display = 'none'; });
+
+  function escapeHtml(text) {
+    const d = document.createElement('div');
+    d.textContent = text;
+    return d.innerHTML;
+  }
+
+  function formatText(text) {
+    return text
+      .replace(/### (.*?)(\n|$)/g, '<h3>$1</h3>')
+      .replace(/## (.*?)(\n|$)/g, '<h2>$1</h2>')
+      .replace(/# (.*?)(\n|$)/g, '<h1>$1</h1>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/`(.*?)`/g, '<code style="background:#f0f0f0;padding:2px 6px;border-radius:4px;font-family:monospace;color:#d63384;">$1</code>')
+      .replace(/^\s*[-•]\s+(.+)$/gm, '<li>$1</li>')
+      .replace(/\b(\d+%|\$[\d,]+\.?\d*|\d[\d,]*\.?\d*\s*(?:million|billion|thousand|years?|months?|days?|hours?|minutes?|seconds?))\b/gi, '<span class="highlight">$1</span>')
+      .replace(/\n{2,}/g, '<br><br>')
+      .replace(/\n/g, '<br>');
+  }
+
+  function formatContent(content) {
+    let formatted = escapeHtml(content);
+    if (formatted.includes('```')) {
+      formatted = formatted.split('```').map((part, i) => {
+        if (i % 2 === 1) {
+          const lines = part.split('\n');
+          const code = lines.slice(1).join('\n');
+          return `<div class="code-block"><button class="copy-code-btn">📋 Copy</button>${code}</div>`;
+        }
+        return formatText(part);
+      }).join('');
+    } else {
+      formatted = formatText(formatted);
+    }
+    return formatted;
+  }
+
+  function addMessage(content, isUser, imageDataUrl = null) {
+    const msgDiv = document.createElement('div');
+    msgDiv.className = `message ${isUser ? 'user' : 'assistant'}`;
+    const mc = document.createElement('div');
+    mc.className = 'message-content';
+
+    if (imageDataUrl) {
+      const img = document.createElement('img');
+      img.src = imageDataUrl;
+      img.className = 'message-image';
+      mc.appendChild(img);
+      if (content) {
+        const t = document.createElement('p');
+        t.style.marginTop = '8px';
+        t.textContent = content;
+        mc.appendChild(t);
+      }
+    } else {
+      mc.innerHTML = formatContent(content);
+    }
+
+    msgDiv.appendChild(mc);
+    chatMessages.appendChild(msgDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    mc.querySelectorAll('.copy-code-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const code = btn.parentElement.textContent.replace('📋 Copy', '').trim();
+        navigator.clipboard.writeText(code);
+        btn.textContent = '✅ Copied!';
+        setTimeout(() => btn.textContent = '📋 Copy', 2000);
+      });
+    });
+  }
+
+  function showTyping() {
+    const d = document.createElement('div');
+    d.className = 'message assistant';
+    d.id = 'typingIndicator';
+    d.innerHTML = '<div class="message-content" style="background:white;border:1px solid #e8e8e8;padding:4px 6px;"><div class="typing-indicator"><span></span><span></span><span></span></div></div>';
+    chatMessages.appendChild(d);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+  function removeTyping() { document.getElementById('typingIndicator')?.remove(); }
+
+  async function sendMessage() {
+    const message = chatInput.value.trim();
+    if (!message && !currentImage) return;
+
+    const now = Date.now();
+    if (now - lastRequestTime < 200) return;
+    lastRequestTime = now;
+
+    const imageToSend = currentImage;
+    addMessage(message || 'Analyze this image', true, imageToSend?.dataUrl || null);
+    chatInput.value = '';
+    sendButton.disabled = true;
+
+    let userContent;
+    if (imageToSend) {
+      userContent = [
+        { type: 'text', text: message || 'What do you see in this image?' },
+        { type: 'image_url', image_url: { url: imageToSend.dataUrl } }
+      ];
+    } else {
+      userContent = message;
+    }
+
+    conversationHistory.push({ role: 'user', content: userContent });
+
+    currentImage = null;
+    imagePreviewContainer.innerHTML = '';
+    imageInput.value = '';
+
+    showTyping();
+
+    const systemPrompt = isThinkingMode
+      ? "You are Gordon's Smart Brain in Thinking Mode. Provide detailed, thorough responses with depth and reasoning. Use **bold** for key points. Use headers and lists when helpful. Be comprehensive and educational."
+      : "You are Gordon's Smart Brain in Quick Mode. Give brief, direct answers in 2-3 sentences max. Use **bold** for key info only. Be concise.";
+
+    const model = imageToSend ? 'llama-3.2-11b-vision-preview' : MODELS[currentModelIndex];
+
+    try {
+      // ── Calls YOUR local proxy, not Groq directly ──────────────────────────
+      const response = await fetch(PROXY_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...conversationHistory
+          ],
+          max_tokens: isThinkingMode ? 4096 : 1024,
+          temperature: isThinkingMode ? 0.7 : 0.4
+        })
+      });
+
+      const data = await response.json();
+      removeTyping();
+
+      if (!response.ok) {
+        const errMsg = data.error?.message || 'Unknown error';
+        if (errMsg.includes('model') && currentModelIndex < MODELS.length - 1) {
+          currentModelIndex++;
+          conversationHistory.pop();
+          chatInput.value = message;
+          addMessage(`⚠️ Switching to backup model and retrying...`, false);
+          sendButton.disabled = false;
+          return;
+        }
+        addMessage(`❌ Error: ${errMsg}`, false);
+        sendButton.disabled = false;
+        return;
+      }
+
+      const replyText = data.choices?.[0]?.message?.content;
+      if (replyText) {
+        conversationHistory.push({ role: 'assistant', content: replyText });
+        typeMessage(replyText);
+      } else {
+        addMessage('⚠️ Got an empty response. Please try again!', false);
+      }
+
+    } catch (err) {
+      removeTyping();
+      console.error(err);
+      addMessage('❌ Could not reach the proxy server!\n\nMake sure server.js is running:\n  node server.js', false);
+    }
+
+    sendButton.disabled = false;
+    chatInput.focus();
+  }
+
+  function typeMessage(fullText) {
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'message assistant';
+    const mc = document.createElement('div');
+    mc.className = 'message-content';
+    msgDiv.appendChild(mc);
+    chatMessages.appendChild(msgDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    const words = fullText.split(' ');
+    let i = 0;
+    let displayed = '';
+
+    const interval = setInterval(() => {
+      if (i < words.length) {
+        displayed += (i === 0 ? '' : ' ') + words[i];
+        mc.innerHTML = formatContent(displayed);
+        mc.querySelectorAll('.copy-code-btn').forEach(btn => {
+          btn.onclick = () => {
+            const code = btn.parentElement.textContent.replace('📋 Copy', '').trim();
+            navigator.clipboard.writeText(code);
+            btn.textContent = '✅ Copied!';
+            setTimeout(() => btn.textContent = '📋 Copy', 2000);
+          };
+        });
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        i++;
+      } else {
+        clearInterval(interval);
+      }
+    }, 45);
+  }
+
+  sendButton.addEventListener('click', sendMessage);
+  chatInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessage(); });
+  chatInput.focus();
+</script>
+</body>
+</html>
