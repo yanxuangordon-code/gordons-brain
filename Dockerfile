@@ -2,6 +2,6 @@ FROM node:18-alpine
 WORKDIR /app
 COPY package.json ./
 COPY server.js ./
-COPY public/ ./public/
+COPY index.html ./public/index.html
 EXPOSE 3000
 CMD ["node", "server.js"]
